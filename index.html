@@ -3,14 +3,14 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>減量ログ Ver.1.1</title>
+<title>減量ログ Ver.1.2</title>
 <style>
-:root{--bg:#f7f8f5;--surface:#fff;--surface-strong:#eef4ef;--text:#17211b;--muted:#65726b;--line:#dce5dd;--primary:#1f7a5c;--primary-dark:#155d45;--accent:#2f65b8;--danger:#b74444;--shadow:0 18px 45px rgba(27,45,35,.09)}
+:root{--bg:#f7f8f5;--surface:#fff;--surface-strong:#eef4ef;--text:#17211b;--muted:#65726b;--line:#dce5dd;--primary:#1f7a5c;--primary-dark:#155d45;--accent:#2f65b8;--cal:#b06b22;--danger:#b74444;--shadow:0 18px 45px rgba(27,45,35,.09)}
 *{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--text);font-family:"Segoe UI","Hiragino Sans","Yu Gothic UI",sans-serif}
 button,input,select,textarea{font:inherit}
 .app-shell{width:min(1180px,calc(100% - 32px));margin:0 auto;padding:28px 0 40px}
-.topbar,.form-head,.panel-head,.form-actions,.legend{display:flex;align-items:center;gap:12px}
+.topbar,.form-head,.panel-head,.form-actions,.legend,.sleep-row{display:flex;align-items:center;gap:12px}
 .topbar,.form-head,.panel-head,.form-actions{justify-content:space-between}
 .topbar{margin-bottom:18px}
 .eyebrow{margin:0 0 4px;color:var(--primary);font-size:.78rem;font-weight:700;text-transform:uppercase}
@@ -24,6 +24,7 @@ button{min-height:42px;border-radius:8px;border:1px solid transparent;cursor:poi
 .workspace{display:grid;grid-template-columns:minmax(320px,430px) minmax(0,1fr);gap:18px;align-items:start}
 .entry-form,.chart-panel,.records-section{border:1px solid var(--line);border-radius:8px;background:var(--surface);box-shadow:var(--shadow);padding:18px}
 .records-section{margin-top:18px}
+.chart-stack{display:grid;gap:18px}
 .field-grid,.memo-grid{display:grid;gap:12px;margin-top:16px}
 .field-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
 .memo-grid{grid-template-columns:1fr}
@@ -32,6 +33,7 @@ input,select,textarea{width:100%;border:1px solid var(--line);border-radius:8px;
 input,select{height:42px;padding:0 11px}
 textarea{min-height:80px;resize:vertical;padding:10px 11px}
 input:focus,select:focus,textarea:focus{border-color:var(--primary);box-shadow:0 0 0 3px rgba(31,122,92,.15)}
+.sleep-row input{max-width:88px}.sleep-row span{color:var(--text);font-weight:700}
 .form-actions{margin-top:16px}
 .primary-button,.danger-button,.ghost-button{padding:0 16px}
 .primary-button{flex:1;color:#fff;background:var(--primary)}
@@ -40,7 +42,7 @@ input:focus,select:focus,textarea:focus{border-color:var(--primary);box-shadow:0
 .ghost-button{color:var(--primary-dark);background:var(--surface-strong);border-color:#d6e7dc}
 .legend{flex-wrap:wrap;justify-content:flex-end;color:var(--muted);font-size:.84rem}
 .dot{display:inline-block;width:10px;height:10px;margin-right:5px;border-radius:999px}
-.dot.weight{background:var(--primary)}.dot.average{background:var(--accent)}
+.dot.weight{background:var(--primary)}.dot.average{background:var(--accent)}.dot.steps{background:#556b8e}.dot.calories{background:var(--cal)}
 canvas{display:block;width:100%;height:auto;margin-top:14px;border:1px solid var(--line);border-radius:8px;background:linear-gradient(180deg,#fff 0%,#fbfcfa 100%)}
 .muted{color:var(--muted);font-size:.9rem}
 .table-wrap{overflow-x:auto;margin-top:12px}
@@ -64,7 +66,7 @@ tbody tr{cursor:pointer}tbody tr:hover{background:#f4faf6}
 <main class="app-shell">
   <header class="topbar">
     <div>
-      <p class="eyebrow">Weight Loss Tracker Ver.1.1</p>
+      <p class="eyebrow">Weight Loss Tracker Ver.1.2</p>
       <h1>減量ログ</h1>
     </div>
     <button class="icon-button" id="exportButton" type="button" title="JSONを書き出し" aria-label="JSONを書き出し">↓</button>
@@ -74,7 +76,7 @@ tbody tr{cursor:pointer}tbody tr:hover{background:#f4faf6}
     <div><span class="summary-label">最新体重</span><strong id="latestWeight">-</strong></div>
     <div><span class="summary-label">目標70kgまで</span><strong id="targetDistance">-</strong></div>
     <div><span class="summary-label">7日平均</span><strong id="averageWeight">-</strong></div>
-    <div><span class="summary-label">採用条件</span><strong id="averageCondition">-</strong></div>
+    <div><span class="summary-label">7日平均の条件</span><strong id="averageCondition">-</strong></div>
     <div><span class="summary-label">直近7日間の歩数合計</span><strong id="weeklySteps">-</strong></div>
     <div><span class="summary-label">直近7日間の消費カロリー合計</span><strong id="weeklyCalories">-</strong></div>
   </section>
@@ -97,7 +99,12 @@ tbody tr{cursor:pointer}tbody tr:hover{background:#f4faf6}
           </select>
         </label>
         <label>歩数<input id="steps" type="number" inputmode="numeric" min="0" step="1" placeholder="8500"></label>
-        <label>睡眠時間<input id="sleep" type="number" inputmode="decimal" min="0" max="24" step="0.1" placeholder="7.0"></label>
+        <label>睡眠時間
+          <div class="sleep-row">
+            <input id="sleepHours" type="number" inputmode="numeric" min="0" max="24" step="1" placeholder="7"><span>時間</span>
+            <input id="sleepMinutes" type="number" inputmode="numeric" min="0" max="59" step="1" placeholder="0"><span>分</span>
+          </div>
+        </label>
         <label>消費カロリー kcal<input id="calories" type="number" inputmode="numeric" min="0" step="1" placeholder="450"></label>
       </div>
 
@@ -111,16 +118,34 @@ tbody tr{cursor:pointer}tbody tr:hover{background:#f4faf6}
       </div>
     </form>
 
-    <section class="chart-panel" aria-label="体重グラフ">
-      <div class="panel-head">
-        <h2>体重推移</h2>
-        <div class="legend">
-          <span><i class="dot weight"></i>体重</span>
-          <span><i class="dot average"></i>7日平均</span>
+    <div class="chart-stack">
+      <section class="chart-panel" aria-label="体重グラフ">
+        <div class="panel-head">
+          <h2>体重推移</h2>
+          <div class="legend">
+            <span><i class="dot weight"></i>体重</span>
+            <span><i class="dot average"></i>7日平均</span>
+          </div>
         </div>
-      </div>
-      <canvas id="weightChart" width="900" height="420"></canvas>
-    </section>
+        <canvas id="weightChart" width="900" height="420"></canvas>
+      </section>
+
+      <section class="chart-panel" aria-label="歩数グラフ">
+        <div class="panel-head">
+          <h2>歩数推移</h2>
+          <div class="legend"><span><i class="dot steps"></i>歩数</span></div>
+        </div>
+        <canvas id="stepsChart" width="900" height="320"></canvas>
+      </section>
+
+      <section class="chart-panel" aria-label="消費カロリーグラフ">
+        <div class="panel-head">
+          <h2>消費カロリー推移</h2>
+          <div class="legend"><span><i class="dot calories"></i>消費kcal</span></div>
+        </div>
+        <canvas id="caloriesChart" width="900" height="320"></canvas>
+      </section>
+    </div>
   </section>
 
   <section class="records-section">
@@ -162,15 +187,18 @@ const averageWeight = document.querySelector("#averageWeight");
 const averageCondition = document.querySelector("#averageCondition");
 const weeklySteps = document.querySelector("#weeklySteps");
 const weeklyCalories = document.querySelector("#weeklyCalories");
-const chart = document.querySelector("#weightChart");
-const ctx = chart.getContext("2d");
+
+const weightChart = document.querySelector("#weightChart");
+const stepsChart = document.querySelector("#stepsChart");
+const caloriesChart = document.querySelector("#caloriesChart");
 
 const fields = {
   date: document.querySelector("#date"),
   weight: document.querySelector("#weight"),
   condition: document.querySelector("#condition"),
   steps: document.querySelector("#steps"),
-  sleep: document.querySelector("#sleep"),
+  sleepHours: document.querySelector("#sleepHours"),
+  sleepMinutes: document.querySelector("#sleepMinutes"),
   calories: document.querySelector("#calories"),
   exercise: document.querySelector("#exercise")
 };
@@ -204,6 +232,11 @@ function recentRecords() {
   return sortedRecords().slice(-7);
 }
 
+function numericValue(value) {
+  const number = Number(value);
+  return Number.isFinite(number) ? number : 0;
+}
+
 function formatNumber(value, digits = 1) {
   const number = Number(value);
   return Number.isFinite(number) ? number.toFixed(digits) : "-";
@@ -218,9 +251,24 @@ function formatDate(dateText) {
   }).format(date);
 }
 
-function numericValue(value) {
-  const number = Number(value);
-  return Number.isFinite(number) ? number : 0;
+function getSleepMinutes(record) {
+  if (!record) return null;
+
+  const minutes = Number(record.sleepMinutes);
+  if (Number.isFinite(minutes)) return Math.max(0, Math.round(minutes));
+
+  const legacyHours = Number(record.sleep);
+  if (Number.isFinite(legacyHours)) return Math.max(0, Math.round(legacyHours * 60));
+
+  return null;
+}
+
+function formatSleep(record) {
+  const minutes = getSleepMinutes(record);
+  if (minutes == null) return "-";
+  const hours = Math.floor(minutes / 60);
+  const rest = minutes % 60;
+  return `${hours}時間${rest}分`;
 }
 
 function getPreferredWeight(recordsForWindow) {
@@ -250,28 +298,46 @@ function getAverageSeries(items) {
 }
 
 function fillForm(record) {
+  const sleepMinutes = getSleepMinutes(record);
+
   fields.date.value = record?.date || todayString();
   fields.weight.value = record?.weight ?? "";
   fields.condition.value = record?.condition || "夜風呂後";
   fields.steps.value = record?.steps ?? "";
-  fields.sleep.value = record?.sleep ?? "";
   fields.calories.value = record?.calories ?? "";
   fields.exercise.value = record?.exercise || "";
+
+  if (sleepMinutes == null) {
+    fields.sleepHours.value = "";
+    fields.sleepMinutes.value = "";
+  } else {
+    fields.sleepHours.value = Math.floor(sleepMinutes / 60);
+    fields.sleepMinutes.value = sleepMinutes % 60;
+  }
 }
 
 function readForm() {
   const existing = records.find((record) => record.date === fields.date.value) || {};
-  return {
+  const hoursBlank = fields.sleepHours.value === "";
+  const minutesBlank = fields.sleepMinutes.value === "";
+  const totalSleepMinutes = hoursBlank && minutesBlank
+    ? ""
+    : numericValue(fields.sleepHours.value) * 60 + numericValue(fields.sleepMinutes.value);
+
+  const nextRecord = {
     ...existing,
     date: fields.date.value,
     weight: Number(fields.weight.value),
     condition: fields.condition.value,
     steps: fields.steps.value === "" ? "" : Number(fields.steps.value),
-    sleep: fields.sleep.value === "" ? "" : Number(fields.sleep.value),
+    sleepMinutes: totalSleepMinutes,
     calories: fields.calories.value === "" ? "" : Number(fields.calories.value),
     exercise: fields.exercise.value.trim(),
     updatedAt: new Date().toISOString()
   };
+
+  delete nextRecord.sleep;
+  return nextRecord;
 }
 
 function upsertRecord(record) {
@@ -325,7 +391,7 @@ function renderRecords(items) {
       <td>${formatNumber(record.weight)} kg</td>
       <td>${record.condition || "-"}</td>
       <td>${record.steps === "" || record.steps == null ? "-" : Number(record.steps).toLocaleString("ja-JP")}</td>
-      <td>${record.sleep === "" || record.sleep == null ? "-" : `${formatNumber(record.sleep)} h`}</td>
+      <td>${formatSleep(record)}</td>
       <td>${record.calories === "" || record.calories == null ? "-" : `${Number(record.calories).toLocaleString("ja-JP")} kcal`}</td>
     `;
     row.addEventListener("click", () => fillForm(record));
@@ -333,22 +399,28 @@ function renderRecords(items) {
   });
 }
 
-function renderChart(items) {
+function setupCanvas(canvas, tall = false) {
   const dpr = window.devicePixelRatio || 1;
-  const rect = chart.getBoundingClientRect();
-
-  chart.width = Math.max(320, Math.floor(rect.width * dpr));
-  chart.height = Math.floor((rect.width > 620 ? 420 : 330) * dpr);
+  const rect = canvas.getBoundingClientRect();
+  canvas.width = Math.max(320, Math.floor(rect.width * dpr));
+  canvas.height = Math.floor((tall ? (rect.width > 620 ? 420 : 330) : 300) * dpr);
+  const ctx = canvas.getContext("2d");
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  return { ctx, width: canvas.width / dpr, height: canvas.height / dpr };
+}
 
-  const width = chart.width / dpr;
-  const height = chart.height / dpr;
+function drawEmpty(ctx, text) {
+  ctx.fillStyle = "#65726b";
+  ctx.font = "15px Segoe UI, sans-serif";
+  ctx.fillText(text, 24, 44);
+}
+
+function renderWeightChart(items) {
+  const { ctx, width, height } = setupCanvas(weightChart, true);
   ctx.clearRect(0, 0, width, height);
 
   if (items.length === 0) {
-    ctx.fillStyle = "#65726b";
-    ctx.font = "15px Segoe UI, sans-serif";
-    ctx.fillText("記録を保存するとグラフが表示されます", 24, 44);
+    drawEmpty(ctx, "記録を保存するとグラフが表示されます");
     return;
   }
 
@@ -361,7 +433,6 @@ function renderChart(items) {
   const plotWidth = width - padding.left - padding.right;
   const plotHeight = height - padding.top - padding.bottom;
   const xStep = items.length > 1 ? plotWidth / (items.length - 1) : 0;
-
   const y = (value) => padding.top + ((max - value) / Math.max(1, max - min)) * plotHeight;
   const x = (index) => padding.left + (items.length === 1 ? plotWidth / 2 : index * xStep);
 
@@ -384,13 +455,11 @@ function renderChart(items) {
     ctx.strokeStyle = color;
     ctx.lineWidth = lineWidth;
     ctx.beginPath();
-
     values.forEach((value, index) => {
       if (!Number.isFinite(value)) return;
       if (index === 0) ctx.moveTo(x(index), y(value));
       else ctx.lineTo(x(index), y(value));
     });
-
     ctx.stroke();
   }
 
@@ -414,10 +483,63 @@ function renderChart(items) {
 
   ctx.fillStyle = "#65726b";
   ctx.font = "12px Segoe UI, sans-serif";
-
   items.forEach((record, index) => {
     if (items.length > 10 && index % 2 !== 0) return;
     ctx.fillText(formatDate(record.date), x(index) - 18, height - 16);
+  });
+}
+
+function renderBarChart(canvas, items, fieldName, color, emptyText, suffix) {
+  const { ctx, width, height } = setupCanvas(canvas, false);
+  ctx.clearRect(0, 0, width, height);
+
+  if (items.length === 0) {
+    drawEmpty(ctx, emptyText);
+    return;
+  }
+
+  const values = items.map((record) => numericValue(record[fieldName]));
+  const max = Math.max(1, Math.ceil(Math.max(...values) * 1.15));
+  const padding = { top: 22, right: 20, bottom: 42, left: 54 };
+  const plotWidth = width - padding.left - padding.right;
+  const plotHeight = height - padding.top - padding.bottom;
+  const slot = plotWidth / Math.max(1, items.length);
+  const barWidth = Math.max(10, Math.min(34, slot * 0.58));
+
+  ctx.strokeStyle = "#dce5dd";
+  ctx.lineWidth = 1;
+  ctx.fillStyle = "#65726b";
+  ctx.font = "12px Segoe UI, sans-serif";
+
+  for (let i = 0; i <= 4; i += 1) {
+    const value = (max / 4) * i;
+    const gridY = padding.top + ((max - value) / max) * plotHeight;
+    ctx.beginPath();
+    ctx.moveTo(padding.left, gridY);
+    ctx.lineTo(width - padding.right, gridY);
+    ctx.stroke();
+    ctx.fillText(Math.round(value).toLocaleString("ja-JP"), 6, gridY + 4);
+  }
+
+  values.forEach((value, index) => {
+    const barHeight = (value / max) * plotHeight;
+    const x = padding.left + slot * index + (slot - barWidth) / 2;
+    const y = padding.top + plotHeight - barHeight;
+    ctx.fillStyle = color;
+    ctx.fillRect(x, y, barWidth, barHeight);
+
+    if (items.length <= 7 && value > 0) {
+      ctx.fillStyle = "#65726b";
+      ctx.fillText(`${Math.round(value).toLocaleString("ja-JP")}${suffix}`, x - 6, y - 6);
+    }
+  });
+
+  ctx.fillStyle = "#65726b";
+  ctx.font = "12px Segoe UI, sans-serif";
+  items.forEach((record, index) => {
+    if (items.length > 10 && index % 2 !== 0) return;
+    const labelX = padding.left + slot * index + slot / 2 - 18;
+    ctx.fillText(formatDate(record.date), labelX, height - 16);
   });
 }
 
@@ -425,7 +547,9 @@ function render() {
   const items = sortedRecords();
   renderSummary(items);
   renderRecords(items);
-  renderChart(items);
+  renderWeightChart(items);
+  renderBarChart(stepsChart, items, "steps", "#556b8e", "歩数を保存するとグラフが表示されます", "");
+  renderBarChart(caloriesChart, items, "calories", "#b06b22", "消費カロリーを保存するとグラフが表示されます", "");
 }
 
 form.addEventListener("submit", (event) => {
