@@ -3,24 +3,25 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>減量ログ Ver.1.2</title>
+<title>減量ログ Ver.1.3</title>
 <style>
 :root{--bg:#f7f8f5;--surface:#fff;--surface-strong:#eef4ef;--text:#17211b;--muted:#65726b;--line:#dce5dd;--primary:#1f7a5c;--primary-dark:#155d45;--accent:#2f65b8;--cal:#b06b22;--danger:#b74444;--shadow:0 18px 45px rgba(27,45,35,.09)}
 *{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--text);font-family:"Segoe UI","Hiragino Sans","Yu Gothic UI",sans-serif}
 button,input,select,textarea{font:inherit}
 .app-shell{width:min(1180px,calc(100% - 32px));margin:0 auto;padding:28px 0 40px}
-.topbar,.form-head,.panel-head,.form-actions,.legend,.sleep-row{display:flex;align-items:center;gap:12px}
+.topbar,.form-head,.panel-head,.form-actions,.legend,.sleep-row,.top-actions{display:flex;align-items:center;gap:12px}
 .topbar,.form-head,.panel-head,.form-actions{justify-content:space-between}
 .topbar{margin-bottom:18px}
 .eyebrow{margin:0 0 4px;color:var(--primary);font-size:.78rem;font-weight:700;text-transform:uppercase}
 h1,h2{margin:0}h1{font-size:clamp(1.8rem,4vw,2.7rem)}h2{font-size:1.08rem}
 button{min-height:42px;border-radius:8px;border:1px solid transparent;cursor:pointer;font-weight:700}
-.icon-button{width:44px;color:var(--primary-dark);background:var(--surface);border-color:var(--line);box-shadow:var(--shadow);font-size:1.4rem}
+.icon-button{width:44px;color:var(--primary-dark);background:var(--surface);border-color:var(--line);box-shadow:var(--shadow);font-size:1.2rem}
 .summary-band{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;overflow:hidden;margin-bottom:18px;border:1px solid var(--line);border-radius:8px;background:var(--line)}
 .summary-band>div{min-width:0;padding:18px;background:var(--surface)}
 .summary-label{display:block;margin-bottom:5px;color:var(--muted);font-size:.82rem}
-.summary-band strong{display:block;overflow-wrap:anywhere;font-size:1.28rem}
+.summary-band strong{display:block;overflow-wrap:anywhere;font-size:1.22rem}
+.summary-note{display:block;margin-top:5px;color:var(--muted);font-size:.8rem}
 .workspace{display:grid;grid-template-columns:minmax(320px,430px) minmax(0,1fr);gap:18px;align-items:start}
 .entry-form,.chart-panel,.records-section{border:1px solid var(--line);border-radius:8px;background:var(--surface);box-shadow:var(--shadow);padding:18px}
 .records-section{margin-top:18px}
@@ -51,6 +52,7 @@ th,td{padding:12px 10px;border-bottom:1px solid var(--line);text-align:left;whit
 th{color:var(--muted);font-size:.82rem}
 tbody tr{cursor:pointer}tbody tr:hover{background:#f4faf6}
 .empty-state{margin:16px 0 0;color:var(--muted)}
+#importFile{display:none}
 @media(max-width:820px){
   .app-shell{width:min(100% - 20px,680px);padding-top:18px}
   .summary-band,.workspace,.field-grid{grid-template-columns:1fr}
@@ -66,19 +68,24 @@ tbody tr{cursor:pointer}tbody tr:hover{background:#f4faf6}
 <main class="app-shell">
   <header class="topbar">
     <div>
-      <p class="eyebrow">Weight Loss Tracker Ver.1.2</p>
+      <p class="eyebrow">Weight Loss Tracker Ver.1.3</p>
       <h1>減量ログ</h1>
     </div>
-    <button class="icon-button" id="exportButton" type="button" title="JSONを書き出し" aria-label="JSONを書き出し">↓</button>
+    <div class="top-actions">
+      <button class="icon-button" id="importButton" type="button" title="JSONを読み込み" aria-label="JSONを読み込み">↑</button>
+      <button class="icon-button" id="exportButton" type="button" title="JSONを書き出し" aria-label="JSONを書き出し">↓</button>
+      <input id="importFile" type="file" accept="application/json,.json">
+    </div>
   </header>
 
   <section class="summary-band" aria-label="サマリー">
+    <div><span class="summary-label">今日の記録</span><strong id="todayStatus">-</strong><span class="summary-note" id="todayUpdated">-</span></div>
     <div><span class="summary-label">最新体重</span><strong id="latestWeight">-</strong></div>
     <div><span class="summary-label">目標70kgまで</span><strong id="targetDistance">-</strong></div>
     <div><span class="summary-label">7日平均</span><strong id="averageWeight">-</strong></div>
     <div><span class="summary-label">7日平均の条件</span><strong id="averageCondition">-</strong></div>
-    <div><span class="summary-label">直近7日間の歩数合計</span><strong id="weeklySteps">-</strong></div>
-    <div><span class="summary-label">直近7日間の消費カロリー合計</span><strong id="weeklyCalories">-</strong></div>
+    <div><span class="summary-label">今週歩数（月〜今日）</span><strong id="weeklySteps">-</strong><span class="summary-note" id="weeklyStepsDiff">-</span></div>
+    <div><span class="summary-label">今週消費カロリー（月〜今日）</span><strong id="weeklyCalories">-</strong><span class="summary-note" id="weeklyCaloriesDiff">-</span></div>
   </section>
 
   <section class="workspace">
@@ -181,12 +188,16 @@ const form = document.querySelector("#entryForm");
 const recordsBody = document.querySelector("#recordsBody");
 const emptyState = document.querySelector("#emptyState");
 const recordCount = document.querySelector("#recordCount");
+const todayStatus = document.querySelector("#todayStatus");
+const todayUpdated = document.querySelector("#todayUpdated");
 const latestWeight = document.querySelector("#latestWeight");
 const targetDistance = document.querySelector("#targetDistance");
 const averageWeight = document.querySelector("#averageWeight");
 const averageCondition = document.querySelector("#averageCondition");
 const weeklySteps = document.querySelector("#weeklySteps");
+const weeklyStepsDiff = document.querySelector("#weeklyStepsDiff");
 const weeklyCalories = document.querySelector("#weeklyCalories");
+const weeklyCaloriesDiff = document.querySelector("#weeklyCaloriesDiff");
 
 const weightChart = document.querySelector("#weightChart");
 const stepsChart = document.querySelector("#stepsChart");
@@ -209,6 +220,27 @@ function todayString() {
   const now = new Date();
   const offset = now.getTimezoneOffset() * 60000;
   return new Date(now.getTime() - offset).toISOString().slice(0, 10);
+}
+
+function dateFromString(dateText) {
+  return new Date(`${dateText}T00:00:00`);
+}
+
+function toDateString(date) {
+  const offset = date.getTimezoneOffset() * 60000;
+  return new Date(date.getTime() - offset).toISOString().slice(0, 10);
+}
+
+function addDays(date, days) {
+  const next = new Date(date);
+  next.setDate(next.getDate() + days);
+  return next;
+}
+
+function startOfWeekMonday(date) {
+  const day = date.getDay();
+  const diff = day === 0 ? -6 : 1 - day;
+  return addDays(date, diff);
 }
 
 function loadRecords() {
@@ -243,12 +275,29 @@ function formatNumber(value, digits = 1) {
 }
 
 function formatDate(dateText) {
-  const date = new Date(`${dateText}T00:00:00`);
+  const date = dateFromString(dateText);
   return new Intl.DateTimeFormat("ja-JP", {
     month: "numeric",
     day: "numeric",
     weekday: "short"
   }).format(date);
+}
+
+function formatDateTime(isoText) {
+  if (!isoText) return "-";
+  const date = new Date(isoText);
+  if (Number.isNaN(date.getTime())) return "-";
+  return new Intl.DateTimeFormat("ja-JP", {
+    month: "numeric",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit"
+  }).format(date);
+}
+
+function formatSigned(value, unit) {
+  const sign = value > 0 ? "+" : "";
+  return `前週同日比 ${sign}${value.toLocaleString("ja-JP")}${unit}`;
 }
 
 function getSleepMinutes(record) {
@@ -295,6 +344,28 @@ function getAverageSeries(items) {
     const preferred = getPreferredWeight(windowItems);
     return preferred ? Number(preferred.value.toFixed(2)) : null;
   });
+}
+
+function getRangeTotal(items, startDate, endDate, fieldName) {
+  const start = toDateString(startDate);
+  const end = toDateString(endDate);
+
+  return items.reduce((sum, record) => {
+    if (!record.date || record.date < start || record.date > end) return sum;
+    return sum + numericValue(record[fieldName]);
+  }, 0);
+}
+
+function getWeekComparison(items, fieldName) {
+  const today = dateFromString(todayString());
+  const thisMonday = startOfWeekMonday(today);
+  const lastMonday = addDays(thisMonday, -7);
+  const lastSameDay = addDays(today, -7);
+
+  const current = getRangeTotal(items, thisMonday, today, fieldName);
+  const previous = getRangeTotal(items, lastMonday, lastSameDay, fieldName);
+
+  return { current, previous, diff: current - previous };
 }
 
 function fillForm(record) {
@@ -359,9 +430,12 @@ function deleteSelectedDate() {
 function renderSummary(items) {
   const latest = items.at(-1);
   const preferred = getPreferredWeight(recentRecords());
-  const recent = recentRecords();
-  const stepsTotal = recent.reduce((sum, record) => sum + numericValue(record.steps), 0);
-  const caloriesTotal = recent.reduce((sum, record) => sum + numericValue(record.calories), 0);
+  const todayRecord = items.find((record) => record.date === todayString());
+  const stepsComparison = getWeekComparison(items, "steps");
+  const caloriesComparison = getWeekComparison(items, "calories");
+
+  todayStatus.textContent = todayRecord ? "入力済み" : "未入力";
+  todayUpdated.textContent = todayRecord?.updatedAt ? `更新 ${formatDateTime(todayRecord.updatedAt)}` : "-";
 
   latestWeight.textContent = latest ? `${formatNumber(latest.weight)} kg` : "-";
 
@@ -375,8 +449,12 @@ function renderSummary(items) {
 
   averageWeight.textContent = preferred ? `${formatNumber(preferred.value)} kg` : "-";
   averageCondition.textContent = preferred ? `${preferred.condition} ${preferred.count}件` : "-";
-  weeklySteps.textContent = recent.length > 0 ? `${stepsTotal.toLocaleString("ja-JP")} 歩` : "-";
-  weeklyCalories.textContent = recent.length > 0 ? `${caloriesTotal.toLocaleString("ja-JP")} kcal` : "-";
+
+  weeklySteps.textContent = `${stepsComparison.current.toLocaleString("ja-JP")} 歩`;
+  weeklyStepsDiff.textContent = formatSigned(stepsComparison.diff, "歩");
+
+  weeklyCalories.textContent = `${caloriesComparison.current.toLocaleString("ja-JP")} kcal`;
+  weeklyCaloriesDiff.textContent = formatSigned(caloriesComparison.diff, "kcal");
 }
 
 function renderRecords(items) {
@@ -489,7 +567,7 @@ function renderWeightChart(items) {
   });
 }
 
-function renderBarChart(canvas, items, fieldName, color, emptyText, suffix) {
+function renderBarChart(canvas, items, fieldName, color, emptyText) {
   const { ctx, width, height } = setupCanvas(canvas, false);
   ctx.clearRect(0, 0, width, height);
 
@@ -530,7 +608,7 @@ function renderBarChart(canvas, items, fieldName, color, emptyText, suffix) {
 
     if (items.length <= 7 && value > 0) {
       ctx.fillStyle = "#65726b";
-      ctx.fillText(`${Math.round(value).toLocaleString("ja-JP")}${suffix}`, x - 6, y - 6);
+      ctx.fillText(Math.round(value).toLocaleString("ja-JP"), x - 6, y - 6);
     }
   });
 
@@ -548,8 +626,27 @@ function render() {
   renderSummary(items);
   renderRecords(items);
   renderWeightChart(items);
-  renderBarChart(stepsChart, items, "steps", "#556b8e", "歩数を保存するとグラフが表示されます", "");
-  renderBarChart(caloriesChart, items, "calories", "#b06b22", "消費カロリーを保存するとグラフが表示されます", "");
+  renderBarChart(stepsChart, items, "steps", "#556b8e", "歩数を保存するとグラフが表示されます");
+  renderBarChart(caloriesChart, items, "calories", "#b06b22", "消費カロリーを保存するとグラフが表示されます");
+}
+
+function importRecordsFromJson(text) {
+  const parsed = JSON.parse(text);
+  if (!Array.isArray(parsed)) throw new Error("JSONの形式が正しくありません。");
+
+  const normalized = parsed
+    .filter((record) => record && typeof record === "object" && record.date)
+    .map((record) => ({ ...record }));
+
+  if (!confirm(`JSONから${normalized.length}件の記録を読み込みます。現在のデータは上書きされます。よろしいですか？`)) {
+    return;
+  }
+
+  records = normalized;
+  saveRecords();
+  fillForm(records.find((record) => record.date === todayString()));
+  render();
+  alert("インポートが完了しました。");
 }
 
 form.addEventListener("submit", (event) => {
@@ -572,6 +669,27 @@ document.querySelector("#exportButton").addEventListener("click", () => {
   link.download = "weight-tracker-records.json";
   link.click();
   URL.revokeObjectURL(url);
+});
+
+document.querySelector("#importButton").addEventListener("click", () => {
+  document.querySelector("#importFile").click();
+});
+
+document.querySelector("#importFile").addEventListener("change", (event) => {
+  const file = event.target.files?.[0];
+  if (!file) return;
+
+  const reader = new FileReader();
+  reader.onload = () => {
+    try {
+      importRecordsFromJson(String(reader.result || ""));
+    } catch (error) {
+      alert(`インポートできませんでした。${error.message}`);
+    } finally {
+      event.target.value = "";
+    }
+  };
+  reader.readAsText(file, "utf-8");
 });
 
 fields.date.addEventListener("change", () => {
